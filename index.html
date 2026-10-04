@@ -24,10 +24,9 @@
   .days { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin:8px 0 12px; }
   .chip { padding:8px 12px; white-space:nowrap; font-weight:800; }
   .chip.on { background:#24180f; color:#f6e7cb; }
-  .portals { display:flex; gap:8px; margin:12px 0; }
-  .portal { flex:1; padding:10px 6px; text-align:center; min-height:108px; }
+  .portals { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+  .portal { width:calc(50% - 4px); padding:10px 6px; text-align:center; min-height:108px; }
   .cube { height:54px; border-radius:8px; border:3px solid var(--ink); display:grid; place-items:center; color:#fff; font-weight:900; margin-bottom:6px; }
-  .math { background:#3d7ea6; } .eng { background:#e0902e; } .other { background:#7a6bb5; }
   .card { padding:12px; margin:10px 0; }
   .tag { font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#6b4a2a; }
   .btn { background:var(--good); color:#fff; border:3px solid #1e6b38; border-radius:8px; padding:11px 14px; font-weight:800; }
@@ -48,24 +47,28 @@
 <body>
 <div id="app"></div>
 <script>
-const BUILD = "збірка 5";
+const BUILD = "збірка 6";
 const saveKey = "blokden-progress-v1";
-let world = {days:[]}, mode = "home", track = "math", qi = 0, hearts = 3, built = [], locked = false, dayIndex = 0;
+let world = {days:[]}, mode = "home", subjectIndex = 0, qi = 0, hearts = 3, built = [], locked = false, dayIndex = 0;
 let hintLevel = 0, slotAt = 0, clockH = null, clockM = null, matchSel = null, matched = [];
 let progress = JSON.parse(localStorage.getItem(saveKey) || '{"xp":0,"done":{},"dayId":""}');
 function save() { localStorage.setItem(saveKey, JSON.stringify(progress)); }
 function day() { return world.days[dayIndex] || world.days[0]; }
+function subjects() {
+  const d = day();
+  if (!d) return [];
+  if (d.subjects?.length) return d.subjects;
+  return ["math","english","other"].filter(id => (d[id]||[]).length).map(id => ({id, name:id, color:"#6b4a2a", mark:"?", items:d[id]}));
+}
+function subject() { return subjects()[subjectIndex]; }
 function label(d) {
   if (!d) return "день";
   const [y,m,dd] = String(d.date||"").split("-");
   const months = ["січ","лют","бер","квіт","трав","черв","лип","серп","вер","жовт","лист","груд"];
   return dd && m ? `${Number(dd)} ${months[Number(m)-1]||m}` : (d.date||"день");
 }
-function doneKey(i) { return `${day().id}:${track}:${i}`; }
-function doneCount(name) {
-  const d = day(); if (!d) return 0;
-  return (d[name]||[]).filter((_,i) => progress.done[`${d.id}:${name}:${i}`]).length;
-}
+function doneKey(i) { return `${day().id}:${subject().id}:${i}`; }
+function doneCount(s) { return (s.items||[]).filter((_,i) => progress.done[`${day().id}:${s.id}:${i}`]).length; }
 async function loadWorld() {
   try {
     const res = await fetch("./quests.json?t=" + Date.now(), { cache: "no-store" });
@@ -82,9 +85,7 @@ function hintsHtml(item) {
   return shown + btn;
 }
 function bodyHtml(item) {
-  if (item.type === "order") {
-    return `<div class="slots">${built.map(w => `<span class="slot">${w}</span>`).join("") || "торкни слово"}</div>${item.words.filter(w => !built.includes(w)).map(w => `<button class="word" data-word="${w}">${w}</button>`).join("")}<button class="btn" id="check">Перевірити</button>`;
-  }
+  if (item.type === "order") return `<div class="slots">${built.map(w => `<span class="slot">${w}</span>`).join("") || "торкни слово"}</div>${item.words.filter(w => !built.includes(w)).map(w => `<button class="word" data-word="${w}">${w}</button>`).join("")}<button class="btn" id="check">Перевірити</button>`;
   if (item.type === "build") {
     const slots = item.slots.map((name,i) => `<button class="slot ${i===slotAt?"on":""}" data-slot="${i}">${name}: ${built[i]||"?"}</button>`).join("");
     return `<div class="slots">${slots}</div>${item.tiles.map(t => `<button class="tile" data-tile="${t}">${t}</button>`).join("")}<button class="btn" id="check">Перевірити</button>`;
@@ -110,12 +111,14 @@ function render() {
   const chips = `<div class="days">${(world.days||[]).map((item,i) => `<button class="chip ${i===dayIndex?"on":""}" data-day="${i}">${label(item)}</button>`).join("")}</div>`;
   if (!d) { root.innerHTML = hud + "<p>Ще немає днів.</p>"; bind(); return; }
   if (mode === "home") {
-    root.innerHTML = hud + `<p class="build">${BUILD}</p><h1>Блокдень</h1><p>Відповідь сама не відкривається. Підказка дає крок, не готове число.</p>${chips}<div class="card"><div class="tag">${label(d)}</div><p>${d.lesson||""}</p></div><div class="portals"><button class="portal" data-track="math"><div class="cube math">+ −</div>Математика<small>${doneCount("math")}/${(d.math||[]).length}</small></button><button class="portal" data-track="english"><div class="cube eng">Aa</div>English<small>${doneCount("english")}/${(d.english||[]).length}</small></button><button class="portal" data-track="other"><div class="cube other">?</div>Інші<small>${doneCount("other")}/${(d.other||[]).length}</small></button></div>`;
+    const portals = subjects().map((s,i) => `<button class="portal" data-subject="${i}"><div class="cube" style="background:${s.color||"#6b4a2a"}">${s.mark||s.name.slice(0,2)}</div>${s.name}<small>${doneCount(s)}/${(s.items||[]).length}</small></button>`).join("");
+    root.innerHTML = hud + `<p class="build">${BUILD}</p><h1>Блокдень</h1><p>Кожен предмет зі скріна має свій портал. Відповідь сама не відкривається.</p>${chips}<div class="card"><div class="tag">${label(d)}</div><p>${d.lesson||""}</p></div><div class="portals">${portals}</div>`;
   } else if (mode === "ask") {
-    const item = d[track][qi];
-    root.innerHTML = hud + chips + `<div class="card"><div class="tag">${item.subject||track} · ${qi+1}/${d[track].length}</div><p>${item.q}</p>${bodyHtml(item)}${hintsHtml(item)}<p id="fb"></p><button class="btn alt" id="back">Назад</button></div>`;
+    const s = subject();
+    const item = s.items[qi];
+    root.innerHTML = hud + chips + `<div class="card"><div class="tag">${s.name} · ${qi+1}/${s.items.length}</div><p>${item.q}</p>${bodyHtml(item)}${hintsHtml(item)}<p id="fb"></p><button class="btn alt" id="back">Назад</button></div>`;
   } else {
-    root.innerHTML = hud + chips + `<div class="card"><h1>Шар чистий</h1><p>День лишається в стрічці.</p><button class="btn" id="back">До порталів</button></div>`;
+    root.innerHTML = hud + chips + `<div class="card"><h1>Шар чистий</h1><p>${subject().name} за цей день пройдено.</p><button class="btn" id="back">До предметів</button></div>`;
   }
   bind();
 }
@@ -125,10 +128,10 @@ function bind() {
   const back = document.getElementById("back");
   if (back) back.onclick = () => { mode = "home"; hearts = 3; render(); };
   document.querySelectorAll("[data-day]").forEach(b => b.onclick = () => { dayIndex = Number(b.dataset.day); progress.dayId = world.days[dayIndex].id; save(); mode = "home"; render(); });
-  document.querySelectorAll("[data-track]").forEach(b => b.onclick = () => start(b.dataset.track));
+  document.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => start(Number(b.dataset.subject)));
   document.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => pick(Number(b.dataset.pick)));
   document.querySelectorAll("[data-word]").forEach(b => b.onclick = () => { if (!locked) { built.push(b.dataset.word); render(); } });
-  document.querySelectorAll("[data-tile]").forEach(b => b.onclick = () => { if (locked) return; built[slotAt] = b.dataset.tile; if (slotAt < day()[track][qi].slots.length-1) slotAt++; render(); });
+  document.querySelectorAll("[data-tile]").forEach(b => b.onclick = () => { if (locked) return; built[slotAt] = b.dataset.tile; if (slotAt < subject().items[qi].slots.length-1) slotAt++; render(); });
   document.querySelectorAll("[data-slot]").forEach(b => b.onclick = () => { slotAt = Number(b.dataset.slot); render(); });
   document.querySelectorAll("[data-hour]").forEach(b => b.onclick = () => { clockH = Number(b.dataset.hour); render(); });
   document.querySelectorAll("[data-min]").forEach(b => b.onclick = () => { clockM = Number(b.dataset.min); render(); });
@@ -139,9 +142,9 @@ function bind() {
   const hint = document.getElementById("hint");
   if (hint) hint.onclick = () => { hintLevel++; render(); };
 }
-function start(name) {
-  track = name;
-  if (!(day()[name] || []).length) { alert("На цей день цього порталу немає."); return; }
+function start(index) {
+  subjectIndex = index;
+  if (!(subject().items||[]).length) return;
   qi = 0; resetQ(); mode = "ask"; render();
 }
 function resetQ() { built = []; slotAt = 0; locked = false; hintLevel = 0; clockH = null; clockM = null; matchSel = null; matched = []; }
@@ -158,13 +161,13 @@ function miss(why) {
 }
 function pick(index) {
   if (locked) return; locked = true;
-  const item = day()[track][qi];
+  const item = subject().items[qi];
   document.querySelectorAll(".choice").forEach((b,i) => { if (i === item.answer) b.classList.add("good"); if (i === index && i !== item.answer) b.classList.add("bad"); });
   if (index === item.answer) { markDone(); document.getElementById("fb").textContent = item.why; setTimeout(next, 700); }
   else miss(item.why);
 }
 function checkAny() {
-  const item = day()[track][qi];
+  const item = subject().items[qi];
   if (item.type === "order") {
     const ok = built.join(" ") === item.answer.join(" ");
     if (ok) { markDone(); document.getElementById("fb").textContent = item.why; setTimeout(next, 700); }
@@ -185,16 +188,15 @@ function checkAny() {
 }
 function matchRight(right) {
   if (matchSel === null || locked) return;
-  const item = day()[track][qi];
+  const item = subject().items[qi];
   if (matched.includes(matchSel)) return;
   if (right === matchSel) {
-    matched.push(matchSel);
-    matchSel = null;
+    matched.push(matchSel); matchSel = null;
     if (matched.length === item.pairs.length) { markDone(); render(); document.getElementById("fb").textContent = item.why; setTimeout(next, 700); }
     else render();
   } else miss(item.why);
 }
-function next() { qi++; resetQ(); mode = qi >= day()[track].length ? "win" : "ask"; render(); }
+function next() { qi++; resetQ(); mode = qi >= subject().items.length ? "win" : "ask"; render(); }
 if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(reg => reg.unregister()));
 loadWorld();
 </script>
