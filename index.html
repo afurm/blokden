@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -10,11 +10,11 @@
 <link rel="manifest" href="./manifest.webmanifest" />
 <title>Блокдень</title>
 <style>
-  :root { --ink:#24180f; --ui:#f6e7cb; --edge:#6b4a2a; --good:#2f9d57; --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px); }
+  :root { --ink:#24180f; --ui:#f6e7cb; --edge:#6b4a2a; --good:#2f9d57; --safe-b:env(safe-area-inset-bottom,0px); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; font-family:ui-rounded,"Trebuchet MS",sans-serif; color:var(--ink); background:linear-gradient(#8fd4f2,#c6ecb0 72%); }
   button { font:inherit; cursor:pointer; touch-action:manipulation; }
-  #app { min-height:100dvh; max-width:520px; margin:0 auto; padding:calc(18px + var(--safe-t)) 14px calc(22px + var(--safe-b)); }
+  #app { min-height:100dvh; max-width:520px; margin:0 auto; padding:20px 14px calc(22px + var(--safe-b)); }
   .hud,.card,.portal { background:var(--ui); border:3px solid var(--edge); border-radius:10px; box-shadow:4px 4px 0 rgba(36,24,15,.22); }
   .hud { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px; margin-bottom:12px; }
   .hud button { min-height:44px; }
