@@ -1,0 +1,10 @@
+{
+  "name": "Блокдень",
+  "short_name": "Блокдень",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#79c7ea",
+  "theme_color": "#2f6f62",
+  "lang": "uk"
+}

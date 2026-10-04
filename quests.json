@@ -1,0 +1,21 @@
+{
+  "updated": "2026-10-04T19:50:00+03:00",
+  "note": "Пробний шар. Справжні дні з'являться після скріна з уроку.",
+  "days": [
+    {
+      "id": "demo-1003",
+      "date": "2026-10-03",
+      "demo": true,
+      "lesson": "Пробний урок: квадратні рівняння і Past Simple.",
+      "math": [
+        {"type": "choice", "q": "Дискримінант D = b² − 4ac. Коли коренів немає?", "choices": ["D > 0", "D = 0", "D < 0"], "answer": 2, "why": "D < 0 означає, що дійсних коренів немає."},
+        {"type": "choice", "q": "2x + 6 = 14", "choices": ["x = 2", "x = 4", "x = 10"], "answer": 1, "why": "x = 4."}
+      ],
+      "english": [
+        {"type": "order", "q": "Збери речення.", "words": ["finished", "yesterday", "She", "homework", "her"], "answer": ["She", "finished", "her", "homework", "yesterday"], "why": "She finished her homework yesterday."},
+        {"type": "choice", "q": "I ____ already seen this film.", "choices": ["have", "has", "did"], "answer": 0, "why": "I have already seen."}
+      ],
+      "other": []
+    }
+  ]
+}
