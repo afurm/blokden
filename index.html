@@ -5,28 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Блокдень" />
 <link rel="manifest" href="./manifest.webmanifest" />
 <title>Блокдень</title>
 <style>
-  :root { --ink:#24180f; --ui:#f6e7cb; --edge:#6b4a2a; --good:#2f9d57; --safe:env(safe-area-inset-bottom,0px); }
+  :root { --ink:#24180f; --ui:#f6e7cb; --edge:#6b4a2a; --good:#2f9d57; --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; font-family:ui-rounded,"Trebuchet MS",sans-serif; color:var(--ink); background:linear-gradient(#8fd4f2,#c6ecb0 72%); }
-  button { font:inherit; cursor:pointer; }
-  #app { min-height:100dvh; max-width:520px; margin:0 auto; padding:18px 14px calc(22px + var(--safe)); }
+  button { font:inherit; cursor:pointer; touch-action:manipulation; }
+  #app { min-height:100dvh; max-width:520px; margin:0 auto; padding:calc(18px + var(--safe-t)) 14px calc(22px + var(--safe-b)); }
   .hud,.card,.portal { background:var(--ui); border:3px solid var(--edge); border-radius:10px; box-shadow:4px 4px 0 rgba(36,24,15,.22); }
-  .hud { display:flex; justify-content:space-between; gap:8px; padding:8px 10px; margin-bottom:12px; }
+  .hud { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px; margin-bottom:12px; }
+  .hud button { min-height:44px; }
   h1 { margin:8px 0 4px; font-size:36px; }
   .portals { display:flex; gap:8px; margin:12px 0; }
-  .portal { flex:1; padding:10px 6px; text-align:center; }
+  .portal { flex:1; padding:10px 6px; text-align:center; min-height:108px; }
   .cube { height:54px; border-radius:8px; border:3px solid var(--ink); display:grid; place-items:center; color:#fff; font-weight:900; margin-bottom:6px; }
   .math { background:#3d7ea6; } .eng { background:#e0902e; } .other { background:#7a6bb5; }
   .card { padding:12px; margin:10px 0; }
   .tag { font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#6b4a2a; }
   .btn { background:var(--good); color:#fff; border:3px solid #1e6b38; border-radius:8px; padding:11px 14px; font-weight:800; }
   .btn.alt { background:#e7c48a; color:var(--ink); border-color:var(--edge); }
-  .choice,.word { display:block; width:100%; text-align:left; margin:6px 0; background:#fffaf1; border:3px solid var(--edge); border-radius:8px; padding:10px; font-weight:800; }
+  .choice,.word { display:block; width:100%; text-align:left; margin:6px 0; background:#fffaf1; border:3px solid var(--edge); border-radius:8px; padding:10px; font-weight:800; min-height:44px; }
   .choice.good { background:#d9f5d4; } .choice.bad { background:#ffd9d4; }
   .slots { display:flex; flex-wrap:wrap; gap:6px; min-height:42px; margin:8px 0; }
   .slot { background:#fff; border:3px solid var(--ink); border-radius:6px; padding:6px 8px; font-weight:800; }
@@ -51,7 +52,7 @@ function render() {
   const d = day();
   const hud = `<div class="hud"><b>XP ${xp}</b><span>${"♥".repeat(hearts)}${"♡".repeat(Math.max(0,3-hearts))}</span><button class="btn alt" id="refresh">Оновити шар</button></div>`;
   if (mode === "home") {
-    root.innerHTML = hud + `<h1>Блокдень</h1><p>Скрін уроку кидай у чат. Я збираю з нього завдання й дописую шар сюди.</p><div class="card"><div class="tag">${d.demo ? "пробний шар" : d.date}</div><p>${d.lesson}</p></div><div class="portals"><button class="portal" data-track="math"><div class="cube math">+ −</div>Математика</button><button class="portal" data-track="english"><div class="cube eng">Aa</div>English</button><button class="portal" data-track="other"><div class="cube other">?</div>Інші</button></div><div class="card"><div class="tag">на головний екран</div><p>Safari → поділитися → на початковий екран. Після нового шару натисни «Оновити шар».</p></div>`;
+    root.innerHTML = hud + `<h1>Блокдень</h1><p>Скрін уроку кидай у чат. Я збираю з нього завдання й дописую шар сюди.</p><div class="card"><div class="tag">${d.demo ? "пробний шар" : d.date}</div><p>${d.lesson}</p></div><div class="portals"><button class="portal" data-track="math"><div class="cube math">+ −</div>Математика</button><button class="portal" data-track="english"><div class="cube eng">Aa</div>English</button><button class="portal" data-track="other"><div class="cube other">?</div>Інші</button></div>`;
   } else if (mode === "ask") {
     const item = d[track][qi];
     const body = item.type === "order"
@@ -91,7 +92,6 @@ function checkOrder() {
   else { hearts--; built = []; if (!hearts) setTimeout(() => { mode = "home"; render(); }, 800); else render(); }
 }
 function next() { qi++; built = []; locked = false; mode = qi >= day()[track].length ? "win" : "ask"; render(); }
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
 loadWorld();
 </script>
 </body>
