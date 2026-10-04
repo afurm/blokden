@@ -7,6 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Блокдень" />
+<meta http-equiv="Cache-Control" content="no-cache" />
 <link rel="manifest" href="./manifest.webmanifest" />
 <title>Блокдень</title>
 <style>
@@ -19,6 +20,7 @@
   .hud { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px; margin-bottom:12px; }
   .hud button { min-height:44px; }
   h1 { margin:8px 0 4px; font-size:36px; }
+  .build { margin:0 0 8px; font-weight:800; color:#2f6f62; }
   .portals { display:flex; gap:8px; margin:12px 0; }
   .portal { flex:1; padding:10px 6px; text-align:center; min-height:108px; }
   .cube { height:54px; border-radius:8px; border:3px solid var(--ink); display:grid; place-items:center; color:#fff; font-weight:900; margin-bottom:6px; }
@@ -36,6 +38,7 @@
 <body>
 <div id="app"></div>
 <script>
+const BUILD = "збірка 3";
 const SEED = {"updated":"2026-10-04","days":[{"id":"demo-1003","date":"2026-10-03","demo":true,"lesson":"Пробний урок: квадратні рівняння і Past Simple.","math":[{"type":"choice","q":"Коли немає дійсних коренів?","choices":["D > 0","D = 0","D < 0"],"answer":2,"why":"Коли D < 0."},{"type":"choice","q":"2x + 6 = 14","choices":["x = 2","x = 4","x = 10"],"answer":1,"why":"x = 4."}],"english":[{"type":"order","q":"Збери речення.","words":["finished","yesterday","She","homework","her"],"answer":["She","finished","her","homework","yesterday"],"why":"She finished her homework yesterday."},{"type":"choice","q":"I ____ already seen this film.","choices":["have","has","did"],"answer":0,"why":"I have already seen."}],"other":[]}]};
 let world = SEED, mode = "home", track = "math", qi = 0, hearts = 3, built = [], locked = false, dayIndex = 0;
 let xp = Number(localStorage.getItem("blokden-xp") || 0);
@@ -52,7 +55,7 @@ function render() {
   const d = day();
   const hud = `<div class="hud"><b>XP ${xp}</b><span>${"♥".repeat(hearts)}${"♡".repeat(Math.max(0,3-hearts))}</span><button class="btn alt" id="refresh">Оновити шар</button></div>`;
   if (mode === "home") {
-    root.innerHTML = hud + `<h1>Блокдень</h1><p>Скрін уроку кидай у чат. Я збираю з нього завдання й дописую шар сюди.</p><div class="card"><div class="tag">${d.demo ? "пробний шар" : d.date}</div><p>${d.lesson}</p></div><div class="portals"><button class="portal" data-track="math"><div class="cube math">+ −</div>Математика</button><button class="portal" data-track="english"><div class="cube eng">Aa</div>English</button><button class="portal" data-track="other"><div class="cube other">?</div>Інші</button></div>`;
+    root.innerHTML = hud + `<p class="build">${BUILD}</p><h1>Блокдень</h1><p>Скрін уроку кидай у чат. Я збираю з нього завдання й дописую шар сюди.</p><div class="card"><div class="tag">${d.demo ? "пробний шар" : d.date}</div><p>${d.lesson}</p></div><div class="portals"><button class="portal" data-track="math"><div class="cube math">+ −</div>Математика</button><button class="portal" data-track="english"><div class="cube eng">Aa</div>English</button><button class="portal" data-track="other"><div class="cube other">?</div>Інші</button></div>`;
   } else if (mode === "ask") {
     const item = d[track][qi];
     const body = item.type === "order"
@@ -62,7 +65,7 @@ function render() {
   } else {
     root.innerHTML = hud + `<div class="card"><h1>Шар чистий</h1><p>Наступний скрін додасть нові блоки в цей самий світ.</p><button class="btn" id="back">До порталів</button></div>`;
   }
-  document.getElementById("refresh").onclick = () => loadWorld();
+  document.getElementById("refresh").onclick = () => location.reload();
   const back = document.getElementById("back");
   if (back) back.onclick = () => { mode = "home"; hearts = 3; render(); };
   root.querySelectorAll("[data-track]").forEach(b => b.onclick = () => start(b.dataset.track));
@@ -92,6 +95,9 @@ function checkOrder() {
   else { hearts--; built = []; if (!hearts) setTimeout(() => { mode = "home"; render(); }, 800); else render(); }
 }
 function next() { qi++; built = []; locked = false; mode = qi >= day()[track].length ? "win" : "ask"; render(); }
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((reg) => reg.unregister()));
+}
 loadWorld();
 </script>
 </body>
