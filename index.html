@@ -16,11 +16,14 @@
   body { margin:0; font-family:ui-rounded,"Trebuchet MS",sans-serif; color:var(--ink); background:linear-gradient(#8fd4f2,#c6ecb0 72%); }
   button { font:inherit; cursor:pointer; touch-action:manipulation; }
   #app { min-height:100dvh; max-width:520px; margin:0 auto; padding:20px 14px calc(22px + var(--safe-b)); }
-  .hud,.card,.portal { background:var(--ui); border:3px solid var(--edge); border-radius:10px; box-shadow:4px 4px 0 rgba(36,24,15,.22); }
+  .hud,.card,.portal,.chip { background:var(--ui); border:3px solid var(--edge); border-radius:10px; box-shadow:4px 4px 0 rgba(36,24,15,.22); }
   .hud { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px; margin-bottom:12px; }
   .hud button { min-height:44px; }
   h1 { margin:8px 0 4px; font-size:36px; }
   .build { margin:0 0 8px; font-weight:800; color:#2f6f62; }
+  .days { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin:8px 0 12px; }
+  .chip { padding:8px 12px; white-space:nowrap; font-weight:800; }
+  .chip.on { background:#24180f; color:#f6e7cb; }
   .portals { display:flex; gap:8px; margin:12px 0; }
   .portal { flex:1; padding:10px 6px; text-align:center; min-height:108px; }
   .cube { height:54px; border-radius:8px; border:3px solid var(--ink); display:grid; place-items:center; color:#fff; font-weight:900; margin-bottom:6px; }
@@ -38,36 +41,56 @@
 <body>
 <div id="app"></div>
 <script>
-const BUILD = "збірка 3";
-const SEED = {"updated":"2026-10-04","days":[{"id":"demo-1003","date":"2026-10-03","demo":true,"lesson":"Пробний урок: квадратні рівняння і Past Simple.","math":[{"type":"choice","q":"Коли немає дійсних коренів?","choices":["D > 0","D = 0","D < 0"],"answer":2,"why":"Коли D < 0."},{"type":"choice","q":"2x + 6 = 14","choices":["x = 2","x = 4","x = 10"],"answer":1,"why":"x = 4."}],"english":[{"type":"order","q":"Збери речення.","words":["finished","yesterday","She","homework","her"],"answer":["She","finished","her","homework","yesterday"],"why":"She finished her homework yesterday."},{"type":"choice","q":"I ____ already seen this film.","choices":["have","has","did"],"answer":0,"why":"I have already seen."}],"other":[]}]};
+const BUILD = "збірка 4";
+const SEED = {"days":[]};
+const saveKey = "blokden-progress-v1";
 let world = SEED, mode = "home", track = "math", qi = 0, hearts = 3, built = [], locked = false, dayIndex = 0;
-let xp = Number(localStorage.getItem("blokden-xp") || 0);
+let progress = JSON.parse(localStorage.getItem(saveKey) || '{"xp":0,"done":{},"dayId":""}');
+function save() { localStorage.setItem(saveKey, JSON.stringify(progress)); }
 function day() { return world.days[dayIndex] || world.days[0]; }
+function label(d) {
+  if (!d) return "день";
+  if (d.demo) return "приклад";
+  const [y,m,dd] = String(d.date||"").split("-");
+  const months = ["січ","лют","бер","квіт","трав","черв","лип","серп","вер","жовт","лист","груд"];
+  return dd && m ? `${Number(dd)} ${months[Number(m)-1]||m}` : (d.date||"день");
+}
+function doneKey(i) { return `${day().id}:${track}:${i}`; }
+function doneCount(name) {
+  const d = day(); if (!d) return 0;
+  return (d[name]||[]).filter((_,i) => progress.done[`${d.id}:${name}:${i}`]).length;
+}
 async function loadWorld() {
   try {
     const res = await fetch("./quests.json?t=" + Date.now(), { cache: "no-store" });
     if (res.ok) { const data = await res.json(); if (data.days?.length) world = data; }
   } catch (e) {}
+  const saved = world.days.findIndex(d => d.id === progress.dayId);
+  dayIndex = saved >= 0 ? saved : 0;
   render();
 }
 function render() {
   const root = document.getElementById("app");
   const d = day();
-  const hud = `<div class="hud"><b>XP ${xp}</b><span>${"♥".repeat(hearts)}${"♡".repeat(Math.max(0,3-hearts))}</span><button class="btn alt" id="refresh">Оновити шар</button></div>`;
+  const hud = `<div class="hud"><b>XP ${progress.xp||0}</b><span>${"♥".repeat(hearts)}${"♡".repeat(Math.max(0,3-hearts))}</span><button class="btn alt" id="refresh">Оновити</button></div>`;
+  const chips = `<div class="days">${(world.days||[]).map((item,i) => `<button class="chip ${i===dayIndex?"on":""}" data-day="${i}">${label(item)}</button>`).join("")}</div>`;
+  if (!d) { root.innerHTML = hud + "<p>Ще немає днів.</p>"; return; }
   if (mode === "home") {
-    root.innerHTML = hud + `<p class="build">${BUILD}</p><h1>Блокдень</h1><p>Скрін уроку кидай у чат. Я збираю з нього завдання й дописую шар сюди.</p><div class="card"><div class="tag">${d.demo ? "пробний шар" : d.date}</div><p>${d.lesson}</p></div><div class="portals"><button class="portal" data-track="math"><div class="cube math">+ −</div>Математика</button><button class="portal" data-track="english"><div class="cube eng">Aa</div>English</button><button class="portal" data-track="other"><div class="cube other">?</div>Інші</button></div>`;
+    root.innerHTML = hud + `<p class="build">${BUILD}</p><h1>Блокдень</h1><p>Останній день відкривається сам. Старі лишаються в стрічці зверху.</p>${chips}<div class="card"><div class="tag">${label(d)}</div><p>${d.lesson||""}</p></div><div class="portals"><button class="portal" data-track="math"><div class="cube math">+ −</div>Математика<small>${doneCount("math")}/${(d.math||[]).length}</small></button><button class="portal" data-track="english"><div class="cube eng">Aa</div>English<small>${doneCount("english")}/${(d.english||[]).length}</small></button><button class="portal" data-track="other"><div class="cube other">?</div>Інші<small>${doneCount("other")}/${(d.other||[]).length}</small></button></div>`;
   } else if (mode === "ask") {
     const item = d[track][qi];
+    const already = progress.done[doneKey(qi)];
     const body = item.type === "order"
       ? `<div class="slots">${built.map(w => `<span class="slot">${w}</span>`).join("") || "торкни слово"}</div>${item.words.filter(w => !built.includes(w)).map(w => `<button class="word" data-word="${w}">${w}</button>`).join("")}<button class="btn" id="check">Перевірити</button>`
       : item.choices.map((c,i) => `<button class="choice" data-pick="${i}">${c}</button>`).join("");
-    root.innerHTML = hud + `<div class="card"><div class="tag">${track} · ${qi+1}/${d[track].length}</div><p>${item.q}</p>${body}<p id="fb"></p><button class="btn alt" id="back">Назад</button></div>`;
+    root.innerHTML = hud + chips + `<div class="card"><div class="tag">${label(d)} · ${track} · ${qi+1}/${d[track].length}${already?" · вже було":""}</div><p>${item.q}</p>${body}<p id="fb"></p><button class="btn alt" id="back">Назад</button></div>`;
   } else {
-    root.innerHTML = hud + `<div class="card"><h1>Шар чистий</h1><p>Наступний скрін додасть нові блоки в цей самий світ.</p><button class="btn" id="back">До порталів</button></div>`;
+    root.innerHTML = hud + chips + `<div class="card"><h1>Шар чистий</h1><p>Цей день лишається в стрічці. Можна повернутись пізніше.</p><button class="btn" id="back">До порталів</button></div>`;
   }
   document.getElementById("refresh").onclick = () => location.reload();
   const back = document.getElementById("back");
   if (back) back.onclick = () => { mode = "home"; hearts = 3; render(); };
+  root.querySelectorAll("[data-day]").forEach(b => b.onclick = () => { dayIndex = Number(b.dataset.day); progress.dayId = world.days[dayIndex].id; save(); mode = "home"; render(); });
   root.querySelectorAll("[data-track]").forEach(b => b.onclick = () => start(b.dataset.track));
   root.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => pick(Number(b.dataset.pick)));
   root.querySelectorAll("[data-word]").forEach(b => b.onclick = () => { if (!locked) { built.push(b.dataset.word); render(); } });
@@ -76,28 +99,30 @@ function render() {
 }
 function start(name) {
   track = name;
-  if (!(day()[name] || []).length) { alert("На цьому шарі ще немає блоків. Кинь скрін уроку в чат."); return; }
+  if (!(day()[name] || []).length) { alert("На цей день цього порталу немає."); return; }
   qi = 0; built = []; locked = false; hearts = 3; mode = "ask"; render();
+}
+function markDone() {
+  const key = doneKey(qi);
+  if (!progress.done[key]) { progress.done[key] = true; progress.xp = (progress.xp||0) + 10; save(); }
 }
 function pick(index) {
   if (locked) return; locked = true;
   const item = day()[track][qi];
   document.querySelectorAll(".choice").forEach((b,i) => { if (i === item.answer) b.classList.add("good"); if (i === index && i !== item.answer) b.classList.add("bad"); });
   const fb = document.getElementById("fb");
-  if (index === item.answer) { xp += 10; localStorage.setItem("blokden-xp", xp); fb.textContent = item.why; setTimeout(next, 700); }
-  else { hearts--; fb.textContent = item.why; if (!hearts) setTimeout(() => { mode = "home"; render(); }, 800); else locked = false; document.querySelector(".hud span").textContent = "♥".repeat(hearts)+"♡".repeat(Math.max(0,3-hearts)); }
+  if (index === item.answer) { markDone(); fb.textContent = item.why; setTimeout(next, 700); }
+  else { hearts--; fb.textContent = item.why; if (!hearts) setTimeout(() => { mode = "home"; render(); }, 800); else locked = false; const s = document.querySelector(".hud span"); if (s) s.textContent = "♥".repeat(hearts)+"♡".repeat(Math.max(0,3-hearts)); }
 }
 function checkOrder() {
   const item = day()[track][qi];
   const ok = built.join(" ") === item.answer.join(" ");
   document.getElementById("fb").textContent = ok ? item.why : "Не той порядок.";
-  if (ok) { xp += 15; localStorage.setItem("blokden-xp", xp); setTimeout(next, 700); }
+  if (ok) { markDone(); setTimeout(next, 700); }
   else { hearts--; built = []; if (!hearts) setTimeout(() => { mode = "home"; render(); }, 800); else render(); }
 }
 function next() { qi++; built = []; locked = false; mode = qi >= day()[track].length ? "win" : "ask"; render(); }
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((reg) => reg.unregister()));
-}
+if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(reg => reg.unregister()));
 loadWorld();
 </script>
 </body>
