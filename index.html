@@ -14,16 +14,16 @@
   :root { --ink:#24180f; --ui:#f6e7cb; --edge:#6b4a2a; --good:#2f9d57; --safe-b:env(safe-area-inset-bottom,0px); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; font-family:ui-rounded,"Trebuchet MS",sans-serif; color:var(--ink); background:linear-gradient(#8fd4f2,#c6ecb0 72%); }
-  button { font:inherit; cursor:pointer; touch-action:manipulation; }
+  button,select,input { font:inherit; cursor:pointer; touch-action:manipulation; }
   #app { min-height:100dvh; max-width:520px; margin:0 auto; padding:20px 14px calc(22px + var(--safe-b)); }
-  .hud,.card,.portal,.chip { background:var(--ui); border:3px solid var(--edge); border-radius:10px; box-shadow:4px 4px 0 rgba(36,24,15,.22); }
+  .hud,.card,.portal { background:var(--ui); border:3px solid var(--edge); border-radius:10px; box-shadow:4px 4px 0 rgba(36,24,15,.22); }
   .hud { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px; margin-bottom:12px; }
   .hud button { min-height:44px; }
   h1 { margin:8px 0 4px; font-size:36px; }
   .build { margin:0 0 8px; font-weight:800; color:#2f6f62; }
-  .days { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin:8px 0 12px; }
-  .chip { padding:8px 12px; white-space:nowrap; font-weight:800; }
-  .chip.on { background:#24180f; color:#f6e7cb; }
+  .picker { display:flex; gap:8px; align-items:center; margin:8px 0 12px; }
+  .picker select,.picker input { flex:1; min-height:48px; background:#fffaf1; border:3px solid var(--ink); border-radius:10px; padding:8px 10px; font-weight:800; }
+  .picker button { min-width:48px; min-height:48px; background:#e7c48a; border:3px solid var(--edge); border-radius:10px; font-weight:900; }
   .portals { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
   .portal { width:calc(50% - 4px); padding:10px 6px; text-align:center; min-height:108px; }
   .cube { height:54px; border-radius:8px; border:3px solid var(--ink); display:grid; place-items:center; color:#fff; font-weight:900; margin-bottom:6px; }
@@ -31,26 +31,18 @@
   .tag { font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#6b4a2a; }
   .btn { background:var(--good); color:#fff; border:3px solid #1e6b38; border-radius:8px; padding:11px 14px; font-weight:800; }
   .btn.alt { background:#e7c48a; color:var(--ink); border-color:var(--edge); }
-  .choice,.word,.tile { display:inline-block; margin:6px 6px 0 0; background:#fffaf1; border:3px solid var(--edge); border-radius:8px; padding:10px; font-weight:800; min-height:44px; }
-  .choice { display:block; width:100%; text-align:left; }
+  .choice { display:block; width:100%; text-align:left; margin:6px 0 0; background:#fffaf1; border:3px solid var(--edge); border-radius:8px; padding:10px; font-weight:800; min-height:44px; }
   .choice.good { background:#d9f5d4; } .choice.bad { background:#ffd9d4; }
-  .slots { display:flex; flex-wrap:wrap; gap:6px; min-height:42px; margin:8px 0; }
-  .slot { background:#fff; border:3px solid var(--ink); border-radius:6px; padding:6px 8px; font-weight:800; }
-  .slot.on { outline:3px solid #2f6f62; }
   .hint { background:#fff6d8; border-radius:8px; padding:8px 10px; margin-top:8px; }
   .bar { height:12px; background:#fff; border:3px solid var(--ink); border-radius:8px; overflow:hidden; margin:8px 0; }
   .bar span { display:block; height:100%; background:#2f9d57; }
   .rank { font-weight:800; }
-  .clock { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:8px 0; }
-  .pair { display:flex; gap:8px; margin:6px 0; }
-  .pair button { flex:1; }
-  .pair .locked { background:#d9f5d4; }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
-const BUILD = "збірка 7";
+const BUILD = "збірка 8";
 const RANKS = ["Новачок", "Шукач", "Будівельник", "Майстер блоку", "Хранитель днів"];
 function rank() {
   const xp = progress.xp || 0;
@@ -59,8 +51,7 @@ function rank() {
   return { xp, level, into, title: RANKS[Math.min(RANKS.length - 1, level - 1)] };
 }
 const saveKey = "blokden-progress-v1";
-let world = {days:[]}, mode = "home", subjectIndex = 0, qi = 0, hearts = 3, built = [], locked = false, dayIndex = 0;
-let hintLevel = 0, slotAt = 0, clockH = null, clockM = null, matchSel = null, matched = [];
+let world = {days:[]}, mode = "home", subjectIndex = 0, qi = 0, hearts = 3, locked = false, dayIndex = 0, hintLevel = 0;
 let progress = JSON.parse(localStorage.getItem(saveKey) || '{"xp":0,"done":{},"dayId":""}');
 function save() { localStorage.setItem(saveKey, JSON.stringify(progress)); }
 function day() { return world.days[dayIndex] || world.days[0]; }
@@ -68,17 +59,34 @@ function subjects() {
   const d = day();
   if (!d) return [];
   if (d.subjects?.length) return d.subjects;
-  return ["math","english","other"].filter(id => (d[id]||[]).length).map(id => ({id, name:id, color:"#6b4a2a", mark:"?", items:d[id]}));
+  return [];
 }
 function subject() { return subjects()[subjectIndex]; }
 function label(d) {
   if (!d) return "день";
   const [y,m,dd] = String(d.date||"").split("-");
-  const months = ["січ","лют","бер","квіт","трав","черв","лип","серп","вер","жовт","лист","груд"];
+  const months = ["січня","лютого","березня","квітня","травня","червня","липня","серпня","вересня","жовтня","листопада","грудня"];
   return dd && m ? `${Number(dd)} ${months[Number(m)-1]||m}` : (d.date||"день");
 }
 function doneKey(i) { return `${day().id}:${subject().id}:${i}`; }
 function doneCount(s) { return (s.items||[]).filter((_,i) => progress.done[`${day().id}:${s.id}:${i}`]).length; }
+function pickDay(index) {
+  if (!world.days[index]) return;
+  dayIndex = index;
+  progress.dayId = world.days[dayIndex].id;
+  save();
+  mode = "home";
+  hearts = 3;
+  render();
+}
+function pickByDate(value) {
+  const exact = world.days.findIndex(d => d.date === value);
+  if (exact >= 0) { pickDay(exact); return; }
+  const dates = world.days.map(d => d.date).filter(Boolean).sort();
+  const near = dates.find(d => d >= value) || dates[dates.length - 1];
+  const index = world.days.findIndex(d => d.date === near);
+  if (index >= 0) pickDay(index);
+}
 async function loadWorld() {
   try {
     const res = await fetch("./quests.json?t=" + Date.now(), { cache: "no-store" });
@@ -94,25 +102,30 @@ function hintsHtml(item) {
   const btn = hintLevel < hints.length ? `<button class="btn alt" id="hint">Підказка ${hintLevel+1} з ${hints.length}</button>` : "";
   return shown + btn;
 }
-function bodyHtml(item) {
-  return (item.choices||[]).map((c,i) => `<button class="choice" data-pick="${i}">${c}</button>`).join("");
+function pickerHtml() {
+  const d = day();
+  const options = (world.days||[]).map((item,i) => `<option value="${i}" ${i===dayIndex?"selected":""}>${label(item)}</option>`).join("");
+  const min = (world.days||[]).map(x => x.date).filter(Boolean).sort()[0] || "";
+  const max = (world.days||[]).map(x => x.date).filter(Boolean).sort().slice(-1)[0] || "";
+  return `<div class="picker"><button id="prev" type="button">‹</button><select id="daylist">${options}</select><input id="daydate" type="date" value="${d?.date||""}" min="${min}" max="${max}"><button id="next" type="button">›</button></div>`;
 }
 function render() {
   const root = document.getElementById("app");
   const d = day();
   const r = rank();
   const hud = `<div class="hud"><div><b>Рівень ${r.level}</b><div class="rank">${r.title}</div></div><span>${"♥".repeat(hearts)}${"♡".repeat(Math.max(0,3-hearts))}</span><button class="btn alt" id="refresh">Оновити</button></div><div class="bar"><span style="width:${(r.into/40)*100}%"></span></div><p class="tag">XP ${r.xp} · серія ${progress.streak||0} · до наступного ${40-r.into}</p>`;
-  const chips = `<div class="days">${(world.days||[]).map((item,i) => `<button class="chip ${i===dayIndex?"on":""}" data-day="${i}">${label(item)}</button>`).join("")}</div>`;
+  const picker = pickerHtml();
   if (!d) { root.innerHTML = hud + "<p>Ще немає днів.</p>"; bind(); return; }
   if (mode === "home") {
     const portals = subjects().map((s,i) => `<button class="portal" data-subject="${i}"><div class="cube" style="background:${s.color||"#6b4a2a"}">${doneCount(s)===(s.items||[]).length && s.items.length ? "★" : (s.mark||s.name.slice(0,2))}</div>${s.name}<small>${doneCount(s)}/${(s.items||[]).length}</small></button>`).join("");
-    root.innerHTML = hud + `<p class="build">${BUILD}</p><h1>Блокдень</h1><p>Правильна відповідь дає XP. Три підряд дають бонус, помилка збиває серію.</p>${chips}<div class="card"><div class="tag">${label(d)}</div><p>${d.lesson||""}</p></div><div class="portals">${portals}</div>`;
+    root.innerHTML = hud + `<p class="build">${BUILD}</p><h1>Блокдень</h1><p>Дату обирай у списку або коліщатком. Порожніх днів немає.</p>${picker}<div class="card"><div class="tag">${label(d)} · ${dayIndex+1}/${world.days.length}</div><p>${d.lesson||""}</p></div><div class="portals">${portals}</div>`;
   } else if (mode === "ask") {
     const s = subject();
     const item = s.items[qi];
-    root.innerHTML = hud + chips + `<div class="card"><div class="tag">${s.name} · ${qi+1}/${s.items.length}</div><p>${item.q}</p>${bodyHtml(item)}${hintsHtml(item)}<p id="fb"></p><button class="btn alt" id="back">Назад</button></div>`;
+    const choices = (item.choices||[]).map((c,i) => `<button class="choice" data-pick="${i}">${c}</button>`).join("");
+    root.innerHTML = hud + picker + `<div class="card"><div class="tag">${s.name} · ${qi+1}/${s.items.length}</div><p>${item.q}</p>${choices}${hintsHtml(item)}<p id="fb"></p><button class="btn alt" id="back">Назад</button></div>`;
   } else {
-    root.innerHTML = hud + chips + `<div class="card"><h1>Шар чистий</h1><p>${subject().name} за цей день пройдено. +15 XP за портал.</p><p class="rank">${rank().title}, рівень ${rank().level}</p><button class="btn" id="back">До предметів</button></div>`;
+    root.innerHTML = hud + picker + `<div class="card"><h1>Шар чистий</h1><p>${subject().name} за цей день пройдено. +15 XP за портал.</p><p class="rank">${rank().title}, рівень ${rank().level}</p><button class="btn" id="back">До предметів</button></div>`;
   }
   bind();
 }
@@ -121,7 +134,14 @@ function bind() {
   if (refresh) refresh.onclick = () => location.reload();
   const back = document.getElementById("back");
   if (back) back.onclick = () => { mode = "home"; hearts = 3; render(); };
-  document.querySelectorAll("[data-day]").forEach(b => b.onclick = () => { dayIndex = Number(b.dataset.day); progress.dayId = world.days[dayIndex].id; save(); mode = "home"; render(); });
+  const list = document.getElementById("daylist");
+  if (list) list.onchange = () => pickDay(Number(list.value));
+  const date = document.getElementById("daydate");
+  if (date) date.onchange = () => pickByDate(date.value);
+  const prev = document.getElementById("prev");
+  if (prev) prev.onclick = () => pickDay(Math.max(0, dayIndex - 1));
+  const next = document.getElementById("next");
+  if (next) next.onclick = () => pickDay(Math.min(world.days.length - 1, dayIndex + 1));
   document.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => start(Number(b.dataset.subject)));
   document.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => pick(Number(b.dataset.pick)));
   const hint = document.getElementById("hint");
@@ -130,9 +150,8 @@ function bind() {
 function start(index) {
   subjectIndex = index;
   if (!(subject().items||[]).length) return;
-  qi = 0; resetQ(); mode = "ask"; render();
+  qi = 0; hintLevel = 0; locked = false; mode = "ask"; render();
 }
-function resetQ() { built = []; slotAt = 0; locked = false; hintLevel = 0; }
 function markDone() {
   const key = doneKey(qi);
   if (!progress.done[key]) {
@@ -166,7 +185,7 @@ function pick(index) {
   if (index === item.answer) { markDone(); document.getElementById("fb").textContent = item.why; setTimeout(next, 700); }
   else miss(item.why);
 }
-function next() { qi++; resetQ(); mode = qi >= subject().items.length ? "win" : "ask"; render(); }
+function next() { qi++; hintLevel = 0; locked = false; mode = qi >= subject().items.length ? "win" : "ask"; render(); }
 if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(reg => reg.unregister()));
 loadWorld();
 </script>
