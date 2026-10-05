@@ -56,7 +56,7 @@
 <body>
 <div id="app"></div>
 <script>
-const BUILD = "збірка 13";
+const BUILD = "збірка 14";
 const RANKS = ["Новачок", "Шукач", "Будівельник", "Майстер блоку", "Хранитель днів"];
 const WEEK = ["неділя","понеділок","вівторок","середа","четвер","п'ятниця","субота"];
 function rank() {
@@ -98,13 +98,23 @@ function pickDay(index) {
   menuOpen = false;
   render();
 }
+function selectNewest() {
+  dayIndex = 0;
+  if (world.days[0]) progress.dayId = world.days[0].id;
+  save();
+}
 async function loadWorld() {
   try {
     const res = await fetch("./quests.json?t=" + Date.now(), { cache: "no-store" });
     if (res.ok) { const data = await res.json(); if (data.days?.length) world = data; }
   } catch (e) {}
-  const saved = world.days.findIndex(d => d.id === progress.dayId);
-  dayIndex = saved >= 0 ? saved : 0;
+  world.days = (world.days || []).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  const fresh = new URLSearchParams(location.search).get("fresh") === "1";
+  if (fresh) selectNewest();
+  else {
+    const saved = world.days.findIndex(d => d.id === progress.dayId);
+    dayIndex = saved >= 0 ? saved : 0;
+  }
   render();
 }
 function drawer() {
@@ -127,7 +137,7 @@ function render() {
       const info = dayDone(item);
       return `<button class="day ${i===dayIndex?"on":""}" data-day="${i}">${parts(item).short}<small>${parts(item).week}<br>${info.done} / ${info.items}</small></button>`;
     }).join("");
-    root.innerHTML = hud + `<h1>Дні</h1><p class="lead">Обери день, і відкриються його предмети.</p><div class="daygrid">${days}</div>` + drawer();
+    root.innerHTML = hud + `<h1>Дні</h1><p class="lead">Нові дні зверху. Обери день, і відкриються його предмети.</p><div class="daygrid">${days}</div>` + drawer();
   } else if (mode === "progress") {
     const rows = (world.days||[]).map(item => {
       const info = dayDone(item);
@@ -154,7 +164,7 @@ function bind() {
   const shade = document.getElementById("shade");
   if (shade) shade.onclick = () => { menuOpen = false; render(); };
   const refresh = document.getElementById("refresh");
-  if (refresh) refresh.onclick = () => location.replace("./?v=" + Date.now());
+  if (refresh) refresh.onclick = () => location.replace("./?v=" + Date.now() + "&fresh=1");
   const back = document.getElementById("back");
   if (back) back.onclick = () => { mode = "home"; hearts = 3; menuOpen = false; render(); };
   document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { mode = b.dataset.tab; hearts = 3; menuOpen = false; render(); });
